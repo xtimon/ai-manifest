@@ -1,6 +1,9 @@
 name: Publish Multilingual PDFs
 
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -8,22 +11,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Pandoc
-        run: sudo apt-get install -y pandoc texlive-xetex
+      - name: Setup Pandoc and LaTeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc texlive-xetex texlive-fonts-recommended
+          sudo apt-get clean
 
       - name: Generate PDFs
         run: |
           mkdir -p pdfs
           for lang_file in translations/*.md; do
-            lang=${lang_file##*/}
-            lang=${lang%.md}
-            pandoc "$lang_file" -o "pdfs/manifesto_$lang.pdf" \
+            lang=$(basename "$lang_file" .md)
+            echo "Generating PDF for $lang..."
+            pandoc "$lang_file" \
+              -o "pdfs/manifesto_$lang.pdf" \
               --template=eisvengl \
-              --pdf-engine=xelatex
+              --pdf-engine=xelatex \
+              -V mainfont="DejaVu Sans" \
+              -V geometry:margin=1in
           done
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: manifests
-          path: pdfs/
-
+          name: manifesto-pdfs
+          path: pdfs/*.pdf
